@@ -90,13 +90,12 @@ public class DigestAuthWebServer {
     	Credentials c = getAuthorization(br);
   	 
   	 
-  	 
+      //Generate nonce  	 
    	SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
    	int nonce = Math.abs(sr.nextInt());       	 
   	 
   	 
-    	if ((c != null) && (MiniPasswordManager.checkPassword(c.getUsername(),
-   							   c.getPassword()))) {
+    	if ((c != null) && (MiniPasswordManagerDigest.checkPassword(c.getUsername(), c.getResponse(),nonce ))) {
                      	 
   	response = c.getResponse(nonce);
    	 System.err.println(response);
@@ -191,8 +190,8 @@ public class DigestAuthWebServer {
 
 class Credentials {
 	private String dUsername;
-	private String dPassword;
-	private String response;
+	private String dResponse;
+
 	public Credentials(StringTokenizer st) throws Exception {
   	String realm, uri, response, nonce;
   	st.nextToken();
@@ -204,45 +203,16 @@ class Credentials {
   	st.nextToken();
   	uri = st.nextToken();
   	st.nextToken();
-  	response = st.nextToken();
-  	System.out.println("Username is: " + dUsername);
-  	System.out.println("Realm is: " + realm);
-  	System.out.println("URI is: " + uri);
-  	System.out.println("Response is: " + response);
- 	 
-  	String responseTest = new String((new sun.misc.BASE64Decoder().decodeBuffer(response)));
- 	 
-  	System.out.println("Decoded Response: " + responseTest);
+  	dResponse = st.nextToken();
   	 
 	}
 	public String getUsername() {
     return dUsername;
 	}
-	public String getPassword() {
-    return dPassword;
+	public String getResponse() {
+    return dResponse;
 	}
-	public String getResponse(int nonce) {
- 
-  	try{
-  	   MessageDigest md = MessageDigest.getInstance("MD5");
-   	byte raw[];
-    	String h1 = "\"" + this.getUsername()+ ":DigestAuthWebServer:" + this.getPassword()+"\"";
-   	md.update(h1.getBytes("UTF-8"));
-   	raw = md.digest();
-   	h1 = new sun.misc.BASE64Encoder().encode(raw);
-   	String h2 = "GET:/";
-   	md.update(h2.getBytes("UTF-8"));
-   	raw = md.digest();
-   	h2 = new sun.misc.BASE64Encoder().encode(raw);
-  	 
-   	String response = "\"" + h1 + ":" + nonce + ":" + h2 + "\"";
-   	md.update(response.getBytes("UTF-8"));
-   	raw = md.digest();
-   	return (new sun.misc.BASE64Encoder().encode(raw));
-   	} catch (Exception e) {
-    	return "";
-   	}
-	}
+	
 }
 
 
