@@ -14,7 +14,8 @@ package assignment3;
 
 import java.util.*; 
 import java.io.*; 
-import java.security.*; 
+import java.security.*;
+import java.math.*; 
 
 public class MiniPasswordManagerDigest { 
 
@@ -33,7 +34,8 @@ public class MiniPasswordManagerDigest {
           int salt = 1457736876; //chooseNewSalt(); 
           HashedPasswordTuple ur = 
                     new HashedPasswordTuple(getHash(username,password)); 
-          dUserMap.put(username,ur); 
+          dUserMap.put(username,ur);
+          System.out.println(ur); 
      } 
 
      /** returns a salted, MD5 hash of the password */
@@ -43,29 +45,59 @@ public class MiniPasswordManagerDigest {
 
      /** returns the SHA-256 hash of the provided preimage as a String */ 
      private static String computeMD5(String preimage) throws Exception { 
-          MessageDigest md = null; 
-          md = MessageDigest.getInstance("MD5"); 
-          md.update(preimage.getBytes("UTF-8")); 
-          byte raw[] = md.digest(); 
-          return (new sun.misc.BASE64Encoder().encode(raw)); 
+
+         MessageDigest md = MessageDigest.getInstance("MD5");
+         md.reset();
+         md.update(preimage.getBytes());
+         byte[] raw = md.digest();
+         BigInteger bigInt = new BigInteger(1,raw);
+         return bigInt.toString(16); 
      } 
 
      /** returns true iff the username and password are in the database */
-     public static boolean checkPassword(String username, String password) { 
-          try { 
-               HashedPasswordTuple t = (HashedPasswordTuple)dUserMap.get(username); 
+     public static boolean checkPassword(String username, String response, int nonce, String uri, String method) {
+     System.out.println("Check password: "+ username + "," + nonce + "," + uri + "," + method); 
+          try {                
+               HashedPasswordTuple t = (HashedPasswordTuple)dUserMap.get(username);
+               System.out.println(t); 
                return (t == null) ? false :  
-                    computeResponse(t.getHashedPassword(),getHash(username,password)); 
-          } catch (Exception e) { 
+                    response.equals(computeResponse(t.getHashedPassword(), nonce, uri, method)); 
+          } catch (Exception e) {
+            System.out.println(e); 
           } 
           return false; 
      }
      
-     public static boolean computeResponse(String inputHash, String storedHash)
+     public static String computeResponse(String storedHash, int nonce, String uri, String method)
      {
-          try
-          {
-            
+      System.out.println("We made it!");
+      try {    
+         byte raw[];
+         String h2 = method + ":" + uri;
+         
+         MessageDigest md = MessageDigest.getInstance("MD5");
+         md.reset();
+         md.update(h2.getBytes());
+         raw = md.digest();
+         BigInteger bigInt = new BigInteger(1,raw);
+         h2 = bigInt.toString(16); 
+         
+         String returnResponse = storedHash + ":" + nonce + ":" + h2;
+         md = MessageDigest.getInstance("MD5");
+         md.reset();
+         md.update(returnResponse.getBytes());
+         raw = md.digest();
+         bigInt = new BigInteger(1,raw);
+         returnResponse = bigInt.toString(16); 
+         
+         
+         System.out.println(returnResponse); 
+         return returnResponse;
+      }
+      catch(Exception e){
+         return "";
+         }
+     }          
 
      /** Password file management operations follow **/ 
      public static void init(String pwdFile) throws Exception { 
@@ -112,16 +144,18 @@ class HashedPasswordTuple {
      private int dSalt; 
      public HashedPasswordTuple(String p) { 
           dHpwd = p;
+          
+          System.out.println(p);
      } 
 
      /** Constructs a HashedPasswordTuple pair from a line in
-         the password file. */
+         the password file. 
      public HashedPasswordTuple(String line) throws Exception { 
           StringTokenizer st = 
                new StringTokenizer(line, HashedSaltedPasswordFile.DELIMITER_STR); 
           dHpwd = st.nextToken(); // hashed + salted password 
           dSalt = Integer.parseInt(st.nextToken()); // salt 
-     } 
+     } */
 
      public String getHashedPassword() { 
           return dHpwd; 
@@ -134,7 +168,7 @@ class HashedPasswordTuple {
      /** returns a HashedPasswordTuple in string format so that it
          can be written to the password file. */
      public String toString () { 
-          return (dHpwd + HashedSaltedPasswordFile.DELIMITER_STR + (""+dSalt)); 
+          return (dHpwd); 
      } 
 }
 
