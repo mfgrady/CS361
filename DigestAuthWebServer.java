@@ -38,7 +38,7 @@ public class DigestAuthWebServer {
 
     	/* then process the client's request */
     	processRequest(s);                      	 
-    }                                            	.
+    }                                            
 	}                                               	 
 
 	private String checkPath (String pathname) throws Exception {
@@ -71,7 +71,8 @@ public class DigestAuthWebServer {
 
     String command = null;                        	 
     String pathname = null;
-   String response = null;                   	 
+   String response = null;
+   String username = null, realm = null, uri = null;                  	 
     
     try {
     	/* parse the HTTP request */
@@ -86,22 +87,46 @@ public class DigestAuthWebServer {
     }
 
     if (command.equals("GET")) {	 
-         	 
-    	Credentials c = getAuthorization(br);
-  	 
+      Credentials c;
+
+    	String header = null;
+    	while (!(header = br.readLine()).equals("")) {
+   	 System.err.println (header);
+   	 if (header.startsWith("Authorization:")) {
+   	 	StringTokenizer st = new StringTokenizer(header, "\"");   	 
+    
+         
+        	st.nextToken();
+     	   username = st.nextToken();
+        	st.nextToken();
+        	realm = st.nextToken();
+        	st.nextToken();
+        	st.nextToken();
+        	st.nextToken();
+        	uri = st.nextToken();
+        	st.nextToken();
+        	response = st.nextToken();
+            	        	
+       }
+      }
+      
+      c = new Credentials(username,response);
+      
+      System.out.println(c);  
   	 
       //Generate nonce  	 
-   	SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
-   	int nonce = Math.abs(sr.nextInt());       	 
+   	//SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+   	int nonce = 123456;//Math.abs(sr.nextInt());       	 
   	 
   	 
-    	if ((c != null) && (MiniPasswordManagerDigest.checkPassword(c.getUsername(), c.getResponse(),nonce ))) {
+    	if ((c != null) && (MiniPasswordManagerDigest.checkPassword(c.getUsername(), c.getResponse(), nonce, uri, command))) {
                      	 
-  	response = c.getResponse(nonce);
-   	 System.err.println(response);
                                              	 
    	 serveFile(osw, pathname);
     	} else {
+      
+      //sr = SecureRandom.getInstance("SHA1PRNG");
+   	//nonce = Math.abs(sr.nextInt()); 
  	 
   	    osw.write ("HTTP/1.0 401 Unauthorized\n");
    	 osw.write ("WWW-Authenticate: Digest realm=\"DigestAuthWebServer\", nonce =\"" + nonce + "\" \n\n");
@@ -118,20 +143,6 @@ public class DigestAuthWebServer {
     osw.close();                               	 
 	}                                              	 
 
-	private Credentials getAuthorization (BufferedReader br) {
-    try {
-    	String header = null;
-    	while (!(header = br.readLine()).equals("")) {
-   	 System.err.println (header);
-   	 if (header.startsWith("Authorization:")) {
-   	 	StringTokenizer st = new StringTokenizer(header, "\"");
-   	 	return new Credentials(st);
-   	 }
-    	}
-    } catch (Exception e) {
-    }
-    return null;
-	}
 
 	public void serveFile (OutputStreamWriter osw, 	 
                        	String pathname) throws Exception {
@@ -192,18 +203,8 @@ class Credentials {
 	private String dUsername;
 	private String dResponse;
 
-	public Credentials(StringTokenizer st) throws Exception {
-  	String realm, uri, response, nonce;
-  	st.nextToken();
-  	 dUsername = st.nextToken();
-  	st.nextToken();
-  	realm = st.nextToken();
-  	st.nextToken();
-  	nonce = st.nextToken();
-  	st.nextToken();
-  	uri = st.nextToken();
-  	st.nextToken();
-  	dResponse = st.nextToken();
+	public Credentials(String usn, String rsp) throws Exception {
+  	   dUsername = usn;  dResponse = rsp;
   	 
 	}
 	public String getUsername() {
@@ -212,6 +213,10 @@ class Credentials {
 	public String getResponse() {
     return dResponse;
 	}
+   
+   public String toString(){
+      return ("Values: " + dUsername + " : " + dResponse);
+      }
 	
 }
 
